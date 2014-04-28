@@ -1,7 +1,3 @@
-import com.googlecode.javacpp.Pointer;
-import com.googlecode.javacv.CanvasFrame;
-
-import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,13 +5,26 @@ import static com.googlecode.javacv.cpp.opencv_core.*;
 import static com.googlecode.javacv.cpp.opencv_imgproc.*;
 import static com.googlecode.javacv.cpp.opencv_highgui.*;
 
-public class Smoother {
-    public IplImage smooth(IplImage img, CvScalar lower, CvScalar upper) {
+public class BallDetector {
+    /**
+     * Detects balls (circles) with a color in the given range in a single image.
+     *
+     * @param img image to detect balls in
+     * @param lower lower bound of color range (still not super clear if this is RGB or HSV)
+     * @param upper upper bound of color range (still not super clear if this is RGB or HSV)
+     * @return copy of input image, but with detected balls drawn.  Probably should return a richer object (e.g., the
+     * circles' locations and sizes, the mask image, etc.) will add that eventually.
+     */
+    public IplImage detect(IplImage img, CvScalar lower, CvScalar upper) {
         CvSize size = cvGetSize(img);
+
+        // concert to HSV
         IplImage hsv = cvCreateImage(size, IPL_DEPTH_8U, 3);
         cvCvtColor(img, hsv, CV_BGR2HSV);
 
         cvSaveImage("hsv.jpg", hsv);
+
+        // create simple mask
 
         CvMat mask = cvCreateMat(size.height(), size.width(), CV_8UC1);
         cvInRangeS(hsv, lower, upper, mask);
@@ -23,20 +32,21 @@ public class Smoother {
 
         cvSaveImage("mask.jpg", mask);
 
+        // close/open the mask to "smooth" out some noise
+
         IplConvKernel se21 = cvCreateStructuringElementEx(21, 21, 10, 10, CV_SHAPE_RECT, null);
         IplConvKernel se11 = cvCreateStructuringElementEx(11, 11, 5,  5,  CV_SHAPE_RECT, null);
 
         cvMorphologyEx(mask, mask, null, se21, MORPH_CLOSE, 1);
         cvMorphologyEx(mask, mask, null, se11, MORPH_OPEN, 1);
 
-//        cvClose(mask, mask, se21); // See completed example for cvClose definition
-//        cvOpen(mask, mask, se11);  // See completed example for cvOpen  definition
         cvReleaseStructuringElement(se21);
         cvReleaseStructuringElement(se11);
 
         cvSaveImage("morph.jpg", mask);
 
         /* Copy mask into a grayscale image */
+
         IplImage hough_in = cvCreateImage(size, 8, 1);
         cvCopy(mask, hough_in, null);
         cvSmooth(hough_in, hough_in, CV_GAUSSIAN, 15, 15, 0, 0);
@@ -63,20 +73,25 @@ public class Smoother {
         return out;
     }
 
-    public void save(String filename) {
+    public static void main(String[] args) throws InterruptedException {
+        String fileName = "Tennis-input.jpg";
+
+        IplImage img = loadImage(fileName);
+
+        BallDetector detector = new BallDetector();
+
+        IplImage out = detector.detect(img, cvScalar(0.11 * 256, 0.60 * 256, 0.20 * 256, 0), cvScalar(0.14 * 256, 1.00 * 256, 1.00 * 256, 0));
+
+        cvSaveImage("final.jpg", out);
+    }
+
+    private static IplImage loadImage(String filename) {
         IplImage img=cvLoadImage(filename);
 
         if (img == null) {
             throw new RuntimeException("Could not find file " + filename);
         }
 
-        IplImage out = smooth(img, cvScalar(0.11*256, 0.60*256, 0.20*256, 0), cvScalar(0.14*256, 1.00*256, 1.00*256, 0));
-        cvSaveImage("final.jpg", out);
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        String fileName = "Tennis-input.jpg";
-        Smoother smt = new Smoother();
-        smt.save(fileName);
+        return img;
     }
 }
