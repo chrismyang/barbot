@@ -2,6 +2,7 @@ import com.googlecode.javacpp.Pointer;
 import com.googlecode.javacv.CanvasFrame;
 
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.googlecode.javacv.cpp.opencv_core.*;
@@ -9,23 +10,7 @@ import static com.googlecode.javacv.cpp.opencv_imgproc.*;
 import static com.googlecode.javacv.cpp.opencv_highgui.*;
 
 public class Smoother {
-    public void smooth(String filename) throws InterruptedException {
-        IplImage img=cvLoadImage(filename);
-
-        if (img == null) {
-            throw new RuntimeException("Could not find file " + filename);
-        }
-
-//        CanvasFrame canvas = new CanvasFrame("Out");
-//        canvas.showImage(img);
-//        KeyEvent key = canvas.waitKey();
-//        if (key != null) {
-//            return;
-//        }
-
-//        cvShowImage("foo", img);
-//        cvWaitKey();
-
+    public IplImage smooth(IplImage img, CvScalar lower, CvScalar upper) {
         CvSize size = cvGetSize(img);
         IplImage hsv = cvCreateImage(size, IPL_DEPTH_8U, 3);
         cvCvtColor(img, hsv, CV_BGR2HSV);
@@ -33,8 +18,7 @@ public class Smoother {
         cvSaveImage("hsv.jpg", hsv);
 
         CvMat mask = cvCreateMat(size.height(), size.width(), CV_8UC1);
-        cvInRangeS(hsv, cvScalar(0.11*256, 0.60*256, 0.20*256, 0),
-                cvScalar(0.14*256, 1.00*256, 1.00*256, 0), mask);
+        cvInRangeS(hsv, lower, upper, mask);
         cvReleaseImage(hsv);
 
         cvSaveImage("mask.jpg", mask);
@@ -59,43 +43,40 @@ public class Smoother {
 
         cvSaveImage("smooth.jpg", hough_in);
 
-	/* Run the Hough function */
+	    /* Run the Hough function */
         List<Circle> circles = new CircleDetector().findCircles(hough_in, 4, size.height()/10, 100, 40, 0, 0);
 
-//        CvMemStorage storage = cvCreateMemStorage(0);
-//        CvSeq circles = cvHoughCircles(hough_in, storage,
-//                CV_HOUGH_GRADIENT, 4, size.height()/10, 100, 40, 0, 0);
-//        cvReleaseMemStorage(storage);
+        List<Circle> filtered = new ArrayList<>();
 
+        for (Circle circle : circles) {
+            CvPoint center = circle.getCenter();
 
-//        int total = circles.total();
-//
-//        if (total == 0) {
-//            throw new RuntimeException("0 total in circles");
-//        }
-//
-//        Pointer p0 = cvGetSeqElem(circles, 0);
-//        Pointer p1 = cvGetSeqElem(circles, 1);
-//        Pointer p2 = cvGetSeqElem(circles, 2);
+            CvScalar val = new Image(hough_in).getValue(center);
 
-//        for (int i = 0; i < circles.total(); i++) {
-//            CvPoint3D32f x = new CvPoint3D32f(cvGetSeqElem(circles, i));
-//            CvPoint center = new CvPoint((byte) 0, new Double(x.x()).doubleValue(), new Double(x.y()).doubleValue());
-//            CvScalar val = cvGet2D(mask, center.y(), center.x());
-//            if (val.val(0) < 1) continue;
-//            cvCircle(img,  center, 3,  CV_RGB(0,255,0), -1, CV_AA, 0);
-//            cvCircle(img,  center, (int) x.z(), CV_RGB(255,0,0),  3, CV_AA, 0);
-//            cvCircle(mask, center, 3,  CV_RGB(0,255,0), -1, CV_AA, 0);
-//            cvCircle(mask, center, (int) x.z(), CV_RGB(255,0,0),  3, CV_AA, 0);
-//        }
+            if (val.val(0) >= 1) {
+                filtered.add(circle);
+            }
+        }
 
+        IplImage out = new Drawer(img).drawCircles(filtered, CV_RGB(0,255,0),  3, CV_AA);
 
-        cvSaveImage("final.jpg", img);
+        return out;
+    }
+
+    public void save(String filename) {
+        IplImage img=cvLoadImage(filename);
+
+        if (img == null) {
+            throw new RuntimeException("Could not find file " + filename);
+        }
+
+        IplImage out = smooth(img, cvScalar(0.11*256, 0.60*256, 0.20*256, 0), cvScalar(0.14*256, 1.00*256, 1.00*256, 0));
+        cvSaveImage("final.jpg", out);
     }
 
     public static void main(String[] args) throws InterruptedException {
         String fileName = "Tennis-input.jpg";
         Smoother smt = new Smoother();
-        smt.smooth(fileName);
+        smt.save(fileName);
     }
 }
