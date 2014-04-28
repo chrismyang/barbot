@@ -8,6 +8,9 @@ import java.util.List;
 import static com.googlecode.javacv.cpp.opencv_imgproc.CV_HOUGH_GRADIENT;
 import static com.googlecode.javacv.cpp.opencv_imgproc.cvHoughCircles;
 
+/**
+ * Class that wraps the fairly complicated invocation sequence of using OpenCV's Hough circles.
+ */
 public class CircleDetector {
     public List<Circle> findCircles(IplImage input, double inverseRatio, double minDistance, double cannyEdgeThreshold, double thresholdCenterDetection, int minRadius, int maxRadius) {
         CvMemStorage mem = CvMemStorage.create();
