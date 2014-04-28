@@ -4,9 +4,8 @@ import java.util.List;
 
 import static com.googlecode.javacv.cpp.opencv_core.*;
 import static com.googlecode.javacv.cpp.opencv_highgui.*;
-import static com.googlecode.javacv.cpp.opencv_imgproc.*;
 
-public class Camera {
+public class CameraTester {
     public static void main(String[] args) {
         cvNamedWindow("Camera_Output", 1);    //Create window
         CvCapture capture = cvCreateCameraCapture(CV_CAP_ANY);  //Capture using any camera connected to your system
@@ -15,11 +14,10 @@ public class Camera {
 
             IplImage frame = cvQueryFrame(capture); //Create image frames from capture
 
+            // Load the color range from "range.txt" so we can tweak the parameters in real-time and w/o recompiling
             List<CvScalar> range = loadRange();
 
-//            cvSaveImage("ping-pong.jpg", frame);
-
-            IplImage out = new Smoother().smooth(
+            IplImage out = new BallDetector().detect(
                     frame,
                     range.get(0),
                     range.get(1)
@@ -27,11 +25,6 @@ public class Camera {
 
             cvShowImage("Camera_Output", out);   //Show image frames on created window
 
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
             int key = cvWaitKey(10);     //Capture Keyboard stroke
             if (key == 27){
                 break;      //If you hit ESC key loop will break.
