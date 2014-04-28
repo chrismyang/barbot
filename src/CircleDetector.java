@@ -14,7 +14,11 @@ public class CircleDetector {
 
         try {
             IplImage gray = cvCreateImage(cvGetSize(input), 8, 1);
-            cvCvtColor(input, gray, CV_BGR2GRAY);
+            if (input.nChannels() == 3) {
+                cvCvtColor(input, gray, CV_BGR2GRAY);
+            } else {
+                cvCopy(input, gray);
+            }
 
             CvSeq circles = cvHoughCircles(
                     gray, //Input image
