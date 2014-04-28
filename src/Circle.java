@@ -27,4 +27,8 @@ public class Circle {
     public float getRadius() {
         return radius;
     }
+
+    public Circle withRadius(double newRadius) {
+        return new Circle(new CvPoint3D32f(getX(), getY(), newRadius));
+    }
 }

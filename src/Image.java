@@ -15,7 +15,7 @@ public class Image {
         this.image = image;
     }
 
-    private Image(IplImage image) {
+    public Image(IplImage image) {
         this.image = image;
     }
 
